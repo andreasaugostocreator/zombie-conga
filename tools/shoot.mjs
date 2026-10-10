@@ -8,7 +8,7 @@ const browser = await chromium.launch({ executablePath: '/Applications/Google Ch
 const page = await browser.newPage({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
 const errors = [];
 page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-await page.goto('http://localhost:8080/?debug');
+await page.goto(process.env.URL || 'http://localhost:8080/?debug');
 await page.waitForTimeout(1500);
 await page.screenshot({ path: `${out}/1-start.png` });
 // Drag the joystick with CDP touch events: down at the bottom centre, then up-right.
