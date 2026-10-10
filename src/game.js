@@ -8,33 +8,38 @@ import { sfx, vibrate } from './audio/sfx.js';
 
 const T = TUNING;
 /** Screen-space speed of the leader (px/s). Vertical is a bit slower, which reads right in iso. */
-const LEADER_PX = { x: 54, y: 42 };
+const LEADER_PX = { x: 46, y: 36 };
 export const faceFrom = (sx, sy) => Math.abs(sx) > Math.abs(sy) * 1.1 ? (sx > 0 ? 'E' : 'W') : (sy > 0 ? 'S' : 'N');
 
 export function createGame(world, pal, zombieLooks) {
   const g = {
-    world, effects: new Effects(pal), hash: new SpatialHash(2), flow: new FlowField(world),
+    world, effects: new Effects(pal, { tink: () => sfx.tink() }), hash: new SpatialHash(2), flow: new FlowField(world),
     zombies: new Pool(T.maxZombies, () => ({ x: 0, y: 0, px: 0, py: 0, hp: 0, speed: 0, look: 0, face: 'S', anim: 0, flash: 0, kx: 0, ky: 0, dead: false, wob: 0 })),
     bullets: new Pool(240, () => ({ x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, z: 0.75, life: 0, dmg: 0 })),
     cam: { x: 0, y: 0, px: 0, py: 0 }, debug: { god: false, hitbox: false },
   };
 
   g.reset = () => {
-    const [sx, sy] = world.spawn;
+    let [sx, sy] = world.spawn;
+    // Never start inside something: walk outwards to the nearest free spot.
+    for (let r = 0; r < 8 && blocked(world, sx, sy, T.leaderRadius); r += 0.5)
+      for (let a = 0; a < 8; a++) { const x = world.spawn[0] + Math.cos(a * Math.PI / 4) * r, y = world.spawn[1] + Math.sin(a * Math.PI / 4) * r; if (!blocked(world, x, y, T.leaderRadius)) { sx = x; sy = y; break; } }
     g.leader = { x: sx, y: sy, px: sx, py: sy, hearts: T.hearts, invuln: 0, face: 'S', anim: 0, moving: false, fireT: 0.3, aimT: 0, muzzle: 0, flash: 0, step: 0 };
     g.zombies.clear(); g.bullets.clear(); g.effects.clear();
-    g.time = 0; g.kills = 0; g.state = 'play'; g.shake = 0; g.hitstop = 0; g.flowT = 0; g.spawnT = 0; g.moved = false; g.hurtFlash = 0;
+    g.time = 0; g.kills = 0; g.state = 'play'; g.shake = 0; g.hitstop = 0; g.flowT = 0; g.spawnT = 0; g.moved = false; g.hurtFlash = 0; g.combo = 0; g.lastKill = -9;
     const [cx, cy] = toScreen(sx, sy); g.cam.x = g.cam.px = cx; g.cam.y = g.cam.py = cy;
-    for (let i = 0; i < T.testZombies; i++) spawnZombie(10, 22);
+    for (let i = 0; i < T.testZombies; i++) spawnZombie(8, 26);
     g.flow.build(Math.floor(sx), Math.floor(sy));
   };
 
   function spawnZombie(minD, maxD) {
     const L = g.leader;
-    for (let tries = 0; tries < 40; tries++) {
+    for (let tries = 0; tries < 80; tries++) {
       const x = 0.5 + Math.floor(Math.random() * world.w), y = 0.5 + Math.floor(Math.random() * world.h);
       const d = Math.hypot(x - L.x, y - L.y);
       if (d < minD || d > maxD || blocked(world, x, y, T.walker.radius)) continue;
+      // Spawn out of sight so zombies walk in from off-screen.
+      if (g.view) { const [sx, sy] = toScreen(x - L.x, y - L.y); if (Math.abs(sx) < g.view.w / 2 + 12 && Math.abs(sy) < g.view.h / 2 + 20) continue; }
       const z = g.zombies.spawn(); if (!z) return;
       Object.assign(z, { x, y, px: x, py: y, hp: T.walker.hp, speed: T.walker.speed * (0.82 + Math.random() * 0.36), look: Math.floor(Math.random() * zombieLooks), face: 'S', anim: Math.random(), flash: 0, kx: 0, ky: 0, dead: false, wob: Math.random() * 6 });
       return z;
@@ -59,7 +64,9 @@ export function createGame(world, pal, zombieLooks) {
     g.effects.blood(z.x, z.y, 12, 1.2);
     g.effects.corpse(z.x, z.y, z.look, z.face === 'W');
     g.shake = Math.max(g.shake, 1.6);
-    sfx.die();
+    // Quick kills in a row build a combo; the kill chime climbs with it.
+    g.combo = g.time - g.lastKill < 1.4 ? g.combo + 1 : 1; g.lastKill = g.time;
+    sfx.kill(g.combo);
   }
 
   function fire(L, target) {
@@ -159,7 +166,7 @@ export function createGame(world, pal, zombieLooks) {
 
     // Keep the test map busy.
     g.spawnT -= dt;
-    if (g.spawnT <= 0 && Z.count < T.testZombies) { g.spawnT = 0.5; spawnZombie(10, 24); }
+    if (g.spawnT <= 0 && Z.count < T.testZombies) { g.spawnT = 0.5; spawnZombie(7, 22); }
 
     // Camera eases after the leader (screen space).
     const [lsx, lsy] = toScreen(L.x, L.y);

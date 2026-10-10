@@ -4,7 +4,8 @@
  */
 export function createInput(screen) {
   const input = { move: { x: 0, y: 0 }, stick: null, tapped: false, keys: new Set(), anyPress: false };
-  const RADIUS = 20; // internal pixels
+  // About 60 CSS px across the rim, whatever the pixel scale.
+  const radius = () => Math.max(8, Math.round(30 * (window.devicePixelRatio || 1) / screen.scale));
   let pointerId = null;
   const toInternal = e => screen.cssToInternal(e.clientX, e.clientY);
   const el = screen.canvas;
@@ -16,7 +17,7 @@ export function createInput(screen) {
     pointerId = e.pointerId;
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
     const [x, y] = toInternal(e);
-    input.stick = { ox: x, oy: y, x, y, r: RADIUS };
+    input.stick = { ox: x, oy: y, x, y, r: radius() };
   }, { passive: false });
   el.addEventListener('pointermove', e => {
     if (e.pointerId !== pointerId || !input.stick) return;
@@ -26,7 +27,8 @@ export function createInput(screen) {
     let dx = x - s.ox, dy = y - s.oy;
     const d = Math.hypot(dx, dy);
     // Let the base trail the thumb when it goes past the rim, so direction changes stay easy.
-    if (d > RADIUS * 1.6) { const k = (d - RADIUS * 1.6) / d; s.ox += dx * k; s.oy += dy * k; dx = x - s.ox; dy = y - s.oy; }
+    const R = s.r;
+    if (d > R * 1.6) { const k = (d - R * 1.6) / d; s.ox += dx * k; s.oy += dy * k; dx = x - s.ox; dy = y - s.oy; }
     s.x = x; s.y = y;
   }, { passive: false });
   const end = e => { if (e.pointerId !== pointerId) return; pointerId = null; input.stick = null; };

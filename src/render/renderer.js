@@ -17,6 +17,12 @@ export function createRenderer(screen, world, sheets, pal) {
     s.rx = Math.round(sx - s.sprite.ax); s.ry = Math.round(sy - s.sprite.ay);
     s.rw = s.sprite.canvas.width; s.rh = s.sprite.canvas.height;
   }
+  // Pixel-exact occlusion: does this sprite have a solid pixel at (x, y)?
+  const solidAt = (spr, x, y) => {
+    if (!spr.alphaMap) { const c = spr.canvas, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; spr.alphaMap = new Uint8Array(c.width * c.height); for (let i = 0; i < spr.alphaMap.length; i++) spr.alphaMap[i] = d[i * 4 + 3]; }
+    x = Math.floor(x); y = Math.floor(y);
+    return x >= 0 && y >= 0 && x < spr.canvas.width && y < spr.canvas.height && spr.alphaMap[y * spr.canvas.width + x] > 128;
+  };
   let sky = null, skyKey = '';
   function skyCanvas() {
     const key = screen.w + 'x' + screen.h;
@@ -80,7 +86,8 @@ export function createRenderer(screen, world, sheets, pal) {
       if (x > W || y > H || x + s.rw < 0 || y + s.rh < 0) continue;
       const it = item(n++); it.key = s.key; it.kind = 0; it.ref = s; it.x = x; it.y = y;
       // See-through when it stands in front of the leader and covers them.
-      it.alpha = s.tall && s.key > leaderKey + 0.25 && lsx > x - 2 && lsx < x + s.rw + 2 && lsy - 14 < y + s.rh - 4 && lsy > y ? 0.45 : 1;
+      // See-through only when its pixels actually cover the leader's body.
+      it.alpha = s.tall && s.key > leaderKey + 0.25 && (solidAt(s.sprite, lsx - x, lsy - 8 - y) || solidAt(s.sprite, lsx - x, lsy - 3 - y)) ? 0.45 : 1;
     }
     for (let i = 0; i < g.zombies.count; i++) {
       const z = g.zombies.items[i], zx = lerp(z.px, z.x, alpha), zy = lerp(z.py, z.y, alpha), [x, y] = S(zx, zy);

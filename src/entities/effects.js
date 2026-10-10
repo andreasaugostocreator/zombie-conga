@@ -2,8 +2,8 @@ import { Pool } from '../engine/pool.js';
 
 /** Particles, ground decals (blood stays a while), corpses and floating damage numbers. Pooled. */
 export class Effects {
-  constructor(pal) {
-    this.pal = pal;
+  constructor(pal, sounds = {}) {
+    this.pal = pal; this.sounds = sounds;
     this.parts = new Pool(700, () => ({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, max: 1, color: '#fff', kind: 0, size: 1 }));
     this.decals = new Pool(2000, () => ({ x: 0, y: 0, color: '#000', life: 0, max: 1, size: 1 }));
     this.numbers = new Pool(80, () => ({ x: 0, y: 0, z: 0, val: '', life: 0, color: '#fff' }));
@@ -49,7 +49,7 @@ export class Effects {
       else {
         p.vz -= 9.8 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
         if (p.z <= 0) {
-          if (p.kind === 2 && p.vz < -1) { p.z = 0; p.vz *= -0.35; p.vx *= 0.5; p.vy *= 0.5; }   // casing bounce
+          if (p.kind === 2 && p.vz < -1) { p.z = 0; p.vz *= -0.35; p.vx *= 0.5; p.vy *= 0.5; if (Math.random() < 0.5) this.sounds.tink?.(); }   // casing bounce
           else { this.decal(p.x, p.y, p.color, p.kind === 1 ? 22 : 5); p.life = 0; }
         }
       }

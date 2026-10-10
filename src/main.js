@@ -25,6 +25,8 @@ const sheets = {
 sheets.leaderGhost = sheets.leader.ghost;
 const world = buildWorld(suburbsTest, pal);
 const game = createGame(world, pal, ZOMBIE_LOOKS);
+game.view = { get w() { return screen.w; }, get h() { return screen.h; } };
+game.reset(); // re-spawn now that the view size is known
 const render = createRenderer(screen, world, sheets, pal);
 const hud = createHud(screen, sheets);
 window.__game = game; // handy for the screenshot tool and debugging

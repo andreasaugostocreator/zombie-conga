@@ -21,7 +21,8 @@ function disc(r, color, edge) {
 }
 
 export function createHud(screen, sheets) {
-  const outer = ring(20, 'rgba(255,255,255,0.55)', 2), inner = ring(18, 'rgba(28,20,44,0.35)', 1), knob = disc(7, 'rgba(255,255,255,0.8)', 'rgba(28,20,44,0.6)');
+  let rr = 0, outer, inner, knob;
+  const rings = r => { if (r === rr) return; rr = r; outer = ring(r, 'rgba(255,255,255,0.55)', 2); inner = ring(r - 2, 'rgba(28,20,44,0.35)', 1); knob = disc(Math.max(4, Math.round(r * 0.35)), 'rgba(255,255,255,0.8)', 'rgba(28,20,44,0.6)'); };
   return function hud(g, input, fps) {
     const ctx = screen.ctx, s = screen.safe, W = screen.w, H = screen.h;
     // Red flash when hurt.
@@ -33,20 +34,20 @@ export function createHud(screen, sheets) {
     text(ctx, g.kills, W - s.right - 21, top + 1, { color: '#ffffff' });
     // Floating joystick.
     if (input.stick) {
-      const st = input.stick;
-      ctx.drawImage(inner, Math.round(st.ox - 19), Math.round(st.oy - 19));
-      ctx.drawImage(outer, Math.round(st.ox - 21), Math.round(st.oy - 21));
+      const st = input.stick; rings(st.r);
+      ctx.drawImage(inner, Math.round(st.ox - st.r + 1), Math.round(st.oy - st.r + 1));
+      ctx.drawImage(outer, Math.round(st.ox - st.r - 1), Math.round(st.oy - st.r - 1));
       let dx = st.x - st.ox, dy = st.y - st.oy; const d = Math.hypot(dx, dy);
       if (d > st.r) { dx = dx / d * st.r; dy = dy / d * st.r; }
-      ctx.drawImage(knob, Math.round(st.ox + dx - 7), Math.round(st.oy + dy - 7));
+      const kr = (knob.width - 1) / 2; ctx.drawImage(knob, Math.round(st.ox + dx - kr), Math.round(st.oy + dy - kr));
     }
-    if (!g.moved && g.state === 'play' && Math.floor(g.time * 2) % 3 !== 0) text(ctx, 'DRAG ANYWHERE TO MOVE', W / 2, H - s.bottom - 26, { align: 'center' });
+    if (!g.moved && g.state === 'play' && Math.floor(g.time * 2) % 3 !== 0) { text(ctx, 'DRAG ANYWHERE', W / 2, H - s.bottom - 30, { align: 'center' }); text(ctx, 'TO MOVE', W / 2, H - s.bottom - 22, { align: 'center' }); }
     if (g.state === 'dead') {
       ctx.fillStyle = 'rgba(28,20,44,0.55)'; ctx.fillRect(0, 0, W, H);
-      text(ctx, 'OVERRUN!', W / 2, H * 0.4, { scale: 3, color: '#e2384a', align: 'center' });
-      text(ctx, `${g.kills} ZOMBIES DOWN`, W / 2, H * 0.4 + 26, { align: 'center' });
-      if (g.time - g.deadAt > 0.8 && Math.floor(g.time * 2.5) % 2 === 0) text(ctx, 'TAP TO TRY AGAIN', W / 2, H * 0.4 + 44, { align: 'center', color: '#f4d35e' });
+      text(ctx, 'OVERRUN!', W / 2, H * 0.4, { scale: 2, color: '#e2384a', align: 'center' });
+      text(ctx, `${g.kills} ZOMBIES DOWN`, W / 2, H * 0.4 + 20, { align: 'center' });
+      if (g.time - g.deadAt > 0.8 && Math.floor(g.time * 2.5) % 2 === 0) text(ctx, 'TAP TO TRY AGAIN', W / 2, H * 0.4 + 34, { align: 'center', color: '#f4d35e' });
     }
-    if (fps !== null) text(ctx, `${fps} FPS  Z:${g.zombies.count}${g.debug.god ? ' GOD' : ''}`, left, top + 12, { color: '#9fe870' });
+    if (fps !== null) text(ctx, `${fps}FPS Z${g.zombies.count}${g.debug.god ? ' GOD' : ''}`, left, top + 12, { color: '#9fe870' });
   };
 }
