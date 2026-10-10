@@ -4,7 +4,7 @@
  * repeats don't get tiring. iOS needs a tap first: call unlock().
  */
 let ac = null, out = null, verb = null, noiseBuf = null;
-export const audio = { enabled: true };
+export const audio = { enabled: true, vibration: true };
 
 export function unlock() {
   if (!ac) {
@@ -92,7 +92,21 @@ export const sfx = {
     env(g, t, 0.18, 0.8, 0.09); o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); send(g, 0.4);
     o.start(t); lfo.start(t); o.stop(t + 1.05); lfo.stop(t + 1.05);
   },
+  shotgun() { if (!ok()) return; const p = rnd(0.94, 1.06); noise(0.16, 0.5, { type: 'lowpass', f0: 3200 * p, f1: 500, wet: 0.35 }); tone('sine', 120 * p, 38, 0.18, 0.55); tone('square', 1500, 600, 0.02, 0.08); noise(0.06, 0.12, { type: 'highpass', f0: 3000, delay: 0.26 }); },
+  throw() { if (!ok()) return; noise(0.1, 0.12, { type: 'bandpass', f0: 1200, f1: 3500, q: 2 }); },
+  pan() { if (!ok()) return; const f = rnd(420, 520); tone('triangle', f, f * 0.97, 0.35, 0.22, { wet: 0.4 }); tone('square', f * 2.76, f * 2.7, 0.08, 0.05); noise(0.04, 0.25, { type: 'lowpass', f0: 2000 }); },
+  block() { if (!ok()) return; tone('triangle', 900, 700, 0.12, 0.12, { wet: 0.3 }); noise(0.05, 0.15, { type: 'highpass', f0: 2000 }); },
+  bite() { if (!ok()) return; noise(0.12, 0.45, { type: 'bandpass', f0: 900, f1: 300, q: 2 }); tone('sawtooth', 620, 200, 0.4, 0.12, { delay: 0.05, wet: 0.4 }); tone('sine', 140, 50, 0.2, 0.4); },
+  explode() { if (!ok()) return; tone('sine', 90, 28, 0.7, 0.9); noise(0.9, 0.7, { type: 'lowpass', f0: 2600, f1: 120, wet: 0.6 }); noise(0.1, 0.4, { type: 'highpass', f0: 1500 }); tone('square', 60, 30, 0.4, 0.15, { delay: 0.05 }); },
+  join(n = 1) { if (!ok()) return; const b = Math.min(10, n - 1); [0, 2, 4].forEach((k, i) => tone('triangle', note(b + k), note(b + k), 0.14, 0.1, { delay: i * 0.06, wet: 0.4 })); },
+  pick(streak = 0) { if (!ok()) return; const i = Math.min(14, streak); tone('square', note(i + 5), note(i + 5) * 1.5, 0.06, 0.05); tone('sine', note(i + 5) * 2, note(i + 5) * 2, 0.08, 0.05, { delay: 0.03 }); },
+  levelup() { if (!ok()) return; [0, 2, 4, 7, 9].forEach((k, i) => tone('square', note(k + 5), note(k + 5), 0.12, 0.08, { delay: i * 0.07, wet: 0.4 })); tone('triangle', note(14), note(14), 0.5, 0.1, { delay: 0.35, wet: 0.6 }); },
+  dash() { if (!ok()) return; noise(0.2, 0.25, { type: 'bandpass', f0: 600, f1: 2400, q: 1.5 }); },
+  saw() { if (!ok()) return; tone('sawtooth', rnd(180, 220), 140, 0.08, 0.08); noise(0.06, 0.2, { type: 'bandpass', f0: 1800, q: 3 }); },
+  fire() { if (!ok()) return; noise(0.4, 0.3, { type: 'lowpass', f0: 600, f1: 2000, wet: 0.3 }); tone('triangle', 1800, 1700, 0.05, 0.05); },
+  heal() { if (!ok()) return; [0, 4, 7].forEach((k, i) => tone('sine', note(k + 10), note(k + 10), 0.25, 0.08, { delay: i * 0.08, wet: 0.5 })); },
+  click() { if (!ok()) return; tone('square', 1200, 900, 0.03, 0.06); },
   step() { if (!ok()) return; noise(0.025, 0.035, { type: 'lowpass', f0: 900 }); },
   die() { if (!ok()) return; tone('sawtooth', 300, 40, 0.9, 0.18, { wet: 0.5 }); noise(0.5, 0.3, { type: 'lowpass', f0: 800, f1: 100, wet: 0.5 }); },
 };
-export function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+export function vibrate(ms) { if (!audio.vibration) return; try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }

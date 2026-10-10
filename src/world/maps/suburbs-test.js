@@ -5,7 +5,7 @@
 //  buildings: tile rectangles {x, y, w, d}, height h in blocks (1.5 = one storey), style = palette index,
 //           door [tileX, tileY, 'left' | 'right'] ('left' = the face towards +y, 'right' = towards +x).
 //  objects: [type, x, y, ...]. Types: tree, pine, hedge, fence (x0, y0, x1, y1), car (x, y, axis, colour),
-//           lamp, mailbox, crate, bin, ac / chimney / antenna (rooftop, on a building tile).
+//           lamp, mailbox, crate, bin, barrel (explosive), ac / chimney / antenna (rooftop, on a building tile).
 export default {
   name: 'Maple Street',
   region: 'suburbs',
@@ -277,7 +277,23 @@ export default {
     ['lamp', 30, 36],
     ['lamp', 36, 33],
     ['lamp', 30, 44],
-    ['lamp', 44, 33]
+    ['lamp', 44, 33],
+    ['barrel', 34, 39],
+    ['barrel', 13, 8],
+    ['barrel', 7, 18],
+    ['barrel', 34, 20],
+    ['barrel', 13, 27],
+    ['barrel', 18, 2],
+    ['barrel', 26, 13],
+    ['barrel', 4, 34],
+    ['barrel', 27, 18],
+    ['barrel', 35, 13],
+    ['barrel', 13, 20],
+    ['barrel', 9, 18],
+    ['barrel', 34, 3],
+    ['barrel', 44, 18],
+    ['barrel', 34, 41],
+    ['barrel', 34, 23],
   ],
   spawn: [32, 32],
 };

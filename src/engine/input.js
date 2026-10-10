@@ -1,9 +1,10 @@
 /**
  * One-thumb controls: touch (or click) anywhere and drag; a floating joystick appears under the thumb.
- * Keyboard (WASD / arrows) works too for desktop testing. `move` is a screen-space vector, length 0..1.
+ * Touches that land on a UI button go to the UI instead. A second finger (or Space) asks for a dash.
+ * Keyboard: WASD / arrows move, Space dashes, Escape / P pauses. `move` is screen-space, length 0..1.
  */
-export function createInput(screen) {
-  const input = { move: { x: 0, y: 0 }, stick: null, tapped: false, keys: new Set(), anyPress: false };
+export function createInput(screen, ui) {
+  const input = { move: { x: 0, y: 0 }, stick: null, keys: new Set(), dash: false, pause: false, joystickEnabled: true };
   // About 60 CSS px across the rim, whatever the pixel scale.
   const radius = () => Math.max(8, Math.round(30 * (window.devicePixelRatio || 1) / screen.scale));
   let pointerId = null;
@@ -11,32 +12,36 @@ export function createInput(screen) {
   const el = screen.canvas;
   el.addEventListener('pointerdown', e => {
     e.preventDefault();
-    input.anyPress = true;
-    input.tapped = true;
-    if (pointerId !== null) return;
+    const [x, y] = toInternal(e);
+    if (ui.hit(x, y)) { ui.tap(x, y); return; }
+    if (!input.joystickEnabled) { ui.tap(x, y); return; }
+    if (pointerId !== null) { input.dash = true; return; }   // second finger: dash
     pointerId = e.pointerId;
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
-    const [x, y] = toInternal(e);
     input.stick = { ox: x, oy: y, x, y, r: radius() };
   }, { passive: false });
   el.addEventListener('pointermove', e => {
     if (e.pointerId !== pointerId || !input.stick) return;
     e.preventDefault();
     const [x, y] = toInternal(e);
-    const s = input.stick;
+    const s = input.stick, R = s.r;
     let dx = x - s.ox, dy = y - s.oy;
     const d = Math.hypot(dx, dy);
     // Let the base trail the thumb when it goes past the rim, so direction changes stay easy.
-    const R = s.r;
-    if (d > R * 1.6) { const k = (d - R * 1.6) / d; s.ox += dx * k; s.oy += dy * k; dx = x - s.ox; dy = y - s.oy; }
+    if (d > R * 1.6) { const k = (d - R * 1.6) / d; s.ox += dx * k; s.oy += dy * k; }
     s.x = x; s.y = y;
   }, { passive: false });
   const end = e => { if (e.pointerId !== pointerId) return; pointerId = null; input.stick = null; };
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
-  addEventListener('keydown', e => { input.keys.add(e.key.toLowerCase()); input.anyPress = true; if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault(); });
+  addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (!e.repeat) { if (k === ' ') input.dash = true; if (k === 'escape' || k === 'p') input.pause = true; if (k === 'enter') ui.key('enter'); }
+    input.keys.add(k);
+    if (k.startsWith('arrow') || k === ' ') e.preventDefault();
+  });
   addEventListener('keyup', e => input.keys.delete(e.key.toLowerCase()));
-  addEventListener('blur', () => input.keys.clear());
+  addEventListener('blur', () => { input.keys.clear(); pointerId = null; input.stick = null; });
   // No scrolling, pinch or double-tap zoom, selection or long-press callout.
   for (const t of ['gesturestart', 'gesturechange', 'dblclick', 'contextmenu']) document.addEventListener(t, e => e.preventDefault(), { passive: false });
   document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
@@ -56,6 +61,8 @@ export function createInput(screen) {
     if (len > 1) { x /= len; y /= len; }
     input.move.x = x; input.move.y = y;
   };
-  input.consumeTap = () => { const t = input.tapped; input.tapped = false; return t; };
+  input.takeDash = () => { const d = input.dash; input.dash = false; return d; };
+  input.takePause = () => { const p = input.pause; input.pause = false; return p; };
+  input.release = () => { pointerId = null; input.stick = null; input.move.x = input.move.y = 0; };
   return input;
 }

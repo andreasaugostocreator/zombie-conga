@@ -8,7 +8,42 @@ import { hash2, mulberry32 } from '../engine/rng.js';
    Facings: S (towards camera), N (away), E (right); W is E mirrored. 4-frame walk cycle.
    ------------------------------------------------------------------------------------------ */
 const FRAMES = 4;
+const frac = v => v - Math.floor(v);
 const clear = (g, x, y) => { const i = (y * g.w + x) * 4; g.data[i + 3] = 0; };
+const WOOD = '#7a5236', STEEL = '#c9ccd3', PAN = '#2b2b33';
+function hatFront(R, g, p, hx, dir) {
+  switch (p.hat) {
+    case 'cap': R(hx - 1, 2, 8, 1, p.hatColor); R(hx, 1, 6, 1, p.hatColor); if (dir === 'S') g.set(hx + 2, 1, p.badge); return true;
+    case 'straw': R(hx - 2, 2, 10, 1, p.hatColor); R(hx, 0, 6, 2, p.hatColor); R(hx, 1, 6, 1, p.hatBand); return true;
+    case 'chef': R(hx, 0, 6, 3, '#f4f1ea'); R(hx + 5, 0, 1, 3, '#d9d4c8'); R(hx - 1, 0, 1, 2, '#f4f1ea'); return true;
+    case 'nurse': R(hx + 1, 1, 4, 2, '#f4f1ea'); g.set(hx + 2, 1, '#e2384a'); return false;
+    case 'bun': R(hx + 2, 0, 2, 2, p.hair); return false;
+  }
+  return false;
+}
+function hatSide(R, g, p, hx) {
+  switch (p.hat) {
+    case 'cap': R(hx - 1, 2, 7, 1, p.hatColor); R(hx, 1, 5, 1, p.hatColor); return true;
+    case 'straw': R(hx - 2, 2, 9, 1, p.hatColor); R(hx, 0, 5, 2, p.hatColor); R(hx, 1, 5, 1, p.hatBand); return true;
+    case 'chef': R(hx, 0, 5, 3, '#f4f1ea'); R(hx + 4, 0, 1, 3, '#d9d4c8'); return true;
+    case 'nurse': R(hx, 1, 4, 2, '#f4f1ea'); g.set(hx + 1, 1, '#e2384a'); return false;
+    case 'bun': R(hx - 1, 1, 2, 2, p.hair); return false;
+  }
+  return false;
+}
+function weaponFront(R, g, w, ra) {
+  if (w === 'pistol') R(11, 11 + ra, 1, 1, CHAR.gun);
+  else if (w === 'shotgun') { R(11, 10 + ra, 1, 3, CHAR.gun); g.set(11, 13 + ra, WOOD); }
+  else if (w === 'knife') R(11, 11 + ra, 1, 2, STEEL);
+  else if (w === 'pan') { R(11, 11 + ra, 1, 1, WOOD); R(11, 12 + ra, 2, 2, PAN); }
+}
+function weaponSide(R, g, p) {
+  R(8, 9, 2, 1, p.shirt); R(10, 9, 1, 1, p.skin);
+  if (p.weapon === 'pistol') { R(11, 9, 2, 1, CHAR.gun); g.set(11, 10, CHAR.gun); }
+  else if (p.weapon === 'shotgun') { R(11, 9, 4, 1, CHAR.gun); R(8, 10, 3, 1, WOOD); }
+  else if (p.weapon === 'knife') { R(11, 8, 1, 2, STEEL); g.set(12, 8, STEEL); }
+  else if (p.weapon === 'pan') { R(11, 9, 1, 1, WOOD); R(12, 8, 2, 3, PAN); }
+}
 
 function paintHuman(p, dir, f) {
   const g = new PixBuf(16, 16);
@@ -29,7 +64,7 @@ function paintHuman(p, dir, f) {
       const la = stride > 0 ? 1 : 0, ra = stride < 0 ? 1 : 0;
       R(4, 8 + la, 1, 1, p.shirt); R(4, 9 + la, 1, 2, p.skin);
       R(11, 8 + ra, 1, 1, p.shirt2); R(11, 9 + ra, 1, 2, p.skin2);
-      if (p.gun && dir === 'S') { R(11, 11 + ra, 1, 1, CHAR.gun); }
+      if (dir === 'S') weaponFront(R, g, p.weapon, ra);
     }
     // Head
     const hx = z ? 5 + (dir === 'S' ? 0 : 0) : 5;
@@ -42,8 +77,8 @@ function paintHuman(p, dir, f) {
     } else {
       R(hx, 2, 6, 5, p.hair); R(hx + 1, 7, 4, 1, p.skin2);
     }
-    if (p.hat) { R(hx - 1, 2, 8, 1, p.hat); R(hx, 1, 6, 1, p.hat); if (dir === 'S') g.set(hx + 2, 1, p.badge); }
-    else { clear(g, hx, 2); clear(g, hx + 5, 2); }                                  // rounded head
+    if (p.pattern) for (let yy = 8; yy < 11; yy++) for (let xx = 5; xx < 10; xx++) if ((xx + yy) % 2 === 0) g.set(xx, yy, p.pattern);
+    if (!hatFront(R, g, p, hx, dir)) { clear(g, hx, 2); clear(g, hx + 5, 2); }        // rounded head
     if (dir === 'N') {
       g.set(hx - 1, 5, p.skin2); g.set(hx + 6, 5, p.skin2);                            // ears
       R(4, 8, 1, 2, p.shirt2); R(11, 8, 1, 2, p.shirt2);                               // shoulders
@@ -68,10 +103,9 @@ function paintHuman(p, dir, f) {
     R(hx, 2, 5, 2, p.hair); R(hx, 4, 2, 2, p.hair);
     g.set(hx + 3, 5, z ? CHAR.zeye : '#2a2230');
     if (z) g.set(hx + 4, 7, CHAR.mouth);
-    if (p.hat) { R(hx - 1, 2, 7, 1, p.hat); R(hx, 1, 5, 1, p.hat); }
-    else { clear(g, hx, 2); clear(g, hx + 4, 2); }
+    if (!hatSide(R, g, p, hx)) { clear(g, hx, 2); clear(g, hx + 4, 2); }
     if (z) { R(8, 9, 2, 1, p.shirt); R(10, 9, 3, 1, p.skin); }               // arms out in front
-    else if (p.gun) { R(8, 9, 2, 1, p.shirt); R(10, 9, 1, 1, p.skin); R(11, 9, 2, 1, CHAR.gun); g.set(11, 10, CHAR.gun); }
+    else if (p.weapon) weaponSide(R, g, p);
     else { const a = stride > 0 ? 1 : stride < 0 ? -1 : 0; R(7 + a, 8, 2, 1, p.shirt); R(7 + a, 9, 2, 2, p.skin); }
   }
   return g;
@@ -120,9 +154,22 @@ export function makeCharacter(p) {
   return sheet;
 }
 
-export function copLook() {
-  return { skin: CHAR.skin[0], skin2: shadeHex(CHAR.skin[0], -0.12), hair: CHAR.hair[0], shirt: CHAR.cop.shirt, shirt2: CHAR.cop.shirt2,
-    pants: CHAR.cop.pants, hat: CHAR.cop.hat, badge: CHAR.cop.badge, gun: true, belt: '#1d2440' };
+export function copLook(variant = 0) {
+  const skin = [CHAR.skin[0], CHAR.skin[3], CHAR.skin[1]][variant % 3];
+  return { skin, skin2: shadeHex(skin, -0.12), hair: [CHAR.hair[0], CHAR.hair[4], CHAR.hair[2]][variant % 3], shirt: CHAR.cop.shirt, shirt2: CHAR.cop.shirt2,
+    pants: CHAR.cop.pants, hat: 'cap', hatColor: CHAR.cop.hat, badge: CHAR.cop.badge, weapon: 'pistol', belt: '#1d2440' };
+}
+/** Survivor looks by class: warm, saturated colours so they read against zombies. */
+export function survivorLook(cls) {
+  const sk = (i) => ({ skin: CHAR.skin[i], skin2: shadeHex(CHAR.skin[i], -0.12) });
+  switch (cls) {
+    case 'cop': return copLook(1);
+    case 'farmer': return { ...sk(1), hair: CHAR.hair[1], shirt: '#d0473c', shirt2: '#a8362e', pattern: '#a8362e', pants: '#3d5a8a', belt: '#2c4268', hat: 'straw', hatColor: '#e3c26b', hatBand: '#a8462e', weapon: 'shotgun' };
+    case 'chef': return { ...sk(0), hair: CHAR.hair[0], shirt: '#f2efe6', shirt2: '#d6d0c2', pants: '#3a3a44', belt: '#d6d0c2', hat: 'chef', weapon: 'knife' };
+    case 'grandma': return { ...sk(0), hair: '#d9d4cf', shirt: '#9a6bb8', shirt2: '#7d5498', pants: '#8a5aa6', belt: '#7d5498', hat: 'bun', weapon: 'pan' };
+    case 'nurse': return { ...sk(2), hair: CHAR.hair[0], shirt: '#f2a7bb', shirt2: '#d9879d', pants: '#f2a7bb', belt: '#d9879d', hat: 'nurse', weapon: null };
+  }
+  return copLook(2);
 }
 export function zombieLook(i) {
   const r = mulberry32(100 + i * 17);
@@ -180,7 +227,6 @@ export function makePine(pal, seed) {
    around it), shaded in world coordinates so windows, siding and shingles line up.
    ------------------------------------------------------------------------------------------ */
 const STOREY = 1.5; // blocks per storey
-const frac = v => v - Math.floor(v);
 
 export function houseShader(b, style, pal) {
   const S = pal.houses[style], W = S.wall, Rf = S.roof;
@@ -389,3 +435,67 @@ export function makeCloud(seed) {
   }
   return g.toCanvas();
 }
+
+/* ------------------------------------------------------------------------------------------
+   Pickups, hazards, UI icons.
+   ------------------------------------------------------------------------------------------ */
+function fromRows(rows, colors, outline = OUTLINE) {
+  const h = rows.length, w = rows[0].length, g = new PixBuf(w + 2, h + 2);
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (colors[ch]) g.set(x + 1, y + 1, colors[ch]); }));
+  if (outline) g.outline(outline);
+  return g.toCanvas();
+}
+export function makeBrain() {
+  return fromRows(['.aaab.', 'abaaab', 'aabaab', 'abaaba', '.bbbb.'], { a: '#f7a6c4', b: '#d9718f' });
+}
+export function makeBrainGlow() {
+  const g = new PixBuf(13, 13);
+  for (let y = 0; y < 13; y++) for (let x = 0; x < 13; x++) { const d = Math.hypot(x - 6, y - 6); if (d < 6.2 && (d < 3.5 || (x + y) % 2 === 0)) g.set(x, y, 'rgba(255,170,210,0.35)'); }
+  return g.toCanvas();
+}
+export function makeHelpBubble(color = '#e2384a') {
+  return fromRows(['.wwwww.', 'wwwrwww', 'wwwrwww', 'wwwrwww', 'wwwwwww', 'wwwrwww', '.wwwww.', '...w...'], { w: '#ffffff', r: color });
+}
+export function makeBarrel() {
+  const R = ['#d6453d', '#b5372f', '#8e2b25'];
+  return boxSprite([{ x: 0.24, y: 0.24, z: 0, lx: 0.52, ly: 0.52, h: 0.78, shade: (f, wx, wy, z) => {
+    if (f === 'top') return Math.hypot(wx - 0.5, wy - 0.5) < 0.12 ? '#5b2420' : R[0];
+    if (z > 0.3 && z < 0.48) return ((f === 'left' ? wx : wy) * 10 | 0) % 2 ? '#f4c542' : '#1c1424';   // hazard band
+    if (frac(z * 4) < 0.1) return R[2];
+    return f === 'left' ? R[1] : R[2];
+  } }], { outline: OUTLINE });
+}
+export function makeSaw(frame) {
+  const g = new PixBuf(11, 11), a0 = frame * Math.PI / 8;
+  for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) {
+    const dx = x + 0.5 - 5.5, dy = y + 0.5 - 5.5, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx) - a0;
+    const tooth = Math.cos(a * 8) > 0.2;
+    if (d < 1.2) g.set(x, y, '#5b5f6b');
+    else if (d < 3.6) g.set(x, y, (dx < 0 && dy < 0) ? '#e8ebf0' : '#b8bcc6');
+    else if (d < 5.2 && tooth) g.set(x, y, '#d0d4dc');
+  }
+  g.outline(OUTLINE);
+  return g.toCanvas();
+}
+export function makeKnife(frame) {
+  const g = new PixBuf(7, 7), a = frame * Math.PI / 4, c = Math.cos(a), s2 = Math.sin(a);
+  for (let t = -2.5; t <= 2.5; t += 0.5) g.set(Math.round(3 + c * t), Math.round(3 + s2 * t), t > 0.8 ? WOOD : STEEL);
+  return g.toCanvas();
+}
+const ICONS = {
+  rate: [['....yy.....', '...yyyy....', '...yyyy.ll.', '...oooo....', '...oooo.ll.', '...oooo....', '...oooo.ll.', '...oooo....', '...oooo....'], { y: '#f4d35e', o: '#d99a2b', l: '#ffffff' }],
+  damage: [['....rr....', '...rrrr...', '..rrrrrr..', '..rrrrrr..', '..ffffff..', '..ffffff..', '..ffffff..', '..ffffff..', '..ffffff..'], { r: '#e2384a', f: '#d99a2b' }],
+  pierce: [['.........', 'zz.zz....', 'zz.zz....', '.........', 'aaaaaaaa>', '.........', 'zz.zz....', 'zz.zz....'], { z: '#7d9670', a: '#f4d35e', '>': '#ffffff' }],
+  speed: [['....bbb..', '....bbbb.', '....bbbb.', 'll..bbbb.', '....bbbbb', 'll.bbbbbb', '...ssssss'], { b: '#7a4a2e', s: '#2a2230', l: '#ffffff' }],
+  magnet: [['rr...rr', 'rr...rr', 'rr...rr', 'rr...rr', 'rrr.rrr', '.rrrrr.', '..rrr..'], { r: '#e2384a' }],
+  heart: [['.rr.rr.', 'rrrrrrr', 'rrrrrrr', '.rrrrr.', '..rrr..', '...r...'], { r: '#e2384a' }],
+  tough: [['ggggggg', 'gwwgggg', 'gwggggg', 'ggggggg', '.ggggg.', '..ggg..', '...g...'], { g: '#5aa9cf', w: '#ffffff' }],
+  saw: [['..s.s..', '.sssss.', 'sssdsss', '.ssdss.', 'sssdsss', '.sssss.', '..s.s..'], { s: '#c9ccd3', d: '#5b5f6b' }],
+  molotov: [['...f...', '..fyf..', '...w...', '..ggg..', '.ggggg.', '.ggggg.', '.ggggg.'], { f: '#ff8a3d', y: '#f4d35e', w: '#f4f1ea', g: '#5c9a42' }],
+  radar: [['...y...', '..yyy..', '.yyyyy.', '...y...', '...y...', '...y...'], { y: '#9bd068' }],
+  conga: [['.h..h..h.', 'sss.sss.s', 'sss.sss.s', '.l..l..l.'], { h: '#f2c7a2', s: '#3a5fb5', l: '#2a2230' }],
+  pause: [['ww.ww', 'ww.ww', 'ww.ww', 'ww.ww', 'ww.ww'], { w: '#ffffff' }],
+  gear: [['..w.w..', '.wwwww.', 'www.www', 'ww...ww', 'www.www', '.wwwww.', '..w.w..'], { w: '#ffffff' }],
+  dash: [['..ww...', '...ww..', 'wwwwww.', 'wwwwwww', 'wwwwww.', '...ww..', '..ww...'], { w: '#ffffff' }],
+};
+export function makeIcon(name) { const [rows, colors] = ICONS[name]; return fromRows(rows, colors); }

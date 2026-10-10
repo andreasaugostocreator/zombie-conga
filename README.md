@@ -3,8 +3,9 @@
 Top-down survival in a zombie apocalypse: lead a conga line of survivors who all shoot on their own.
 Isometric pixel art, all drawn in code. Plain HTML + JavaScript modules, no build step.
 
-**Status: Phase 1** (engine and look): isometric renderer, Suburbs test map, leader with floating
-joystick, auto-firing pistol, walkers.
+**Status: Phase 1 + early Phase 2**: isometric renderer, a 48×48 Suburbs test map, title screen,
+settings, pause menu; rescue survivors into a conga line (cop, farmer, chef, grandma, nurse), bites
+break the line, brains → level-up cards (10 upgrades), explosive barrels, dash.
 
 ## Play locally
 
@@ -12,7 +13,8 @@ joystick, auto-firing pistol, walkers.
 cd zombie-conga
 python3 -m http.server 8080
 ```
-Open http://localhost:8080. Move with WASD / arrow keys, or click and drag.
+Open http://localhost:8080. Move with WASD / arrow keys, or click and drag. **Space** dashes
+(on a phone: the DASH button or a second finger), **Esc / P** pauses.
 Add `?debug` to the URL for an FPS counter and debug keys: **H** hitboxes, **G** god mode, **Z** spawn ten walkers.
 
 ## Deploy to GitHub Pages

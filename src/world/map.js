@@ -17,6 +17,7 @@ export function buildWorld(def, pal) {
     }
   };
   const casters = [];
+  world.barrels = [];
   const add = (sprite, wx, wy, wz, key, foot, tall) => world.statics.push({ sprite, wx, wy, wz, key, tall, ...foot });
   const spriteCache = new Map();
   const cached = (k, make) => { if (!spriteCache.has(k)) spriteCache.set(k, make()); return spriteCache.get(k); };
@@ -53,6 +54,7 @@ export function buildWorld(def, pal) {
         casters.push({ x, y, lx, ly, h: 0.9 });
         break;
       }
+      case 'barrel': world.barrels.push([tx, ty]); break;
       case 'lamp': add(cached('lamp', () => S.makeLamp(pal)), tx, ty, 0, tx + ty + 1, foot, true); break;
       case 'mailbox': add(cached('mail' + (i % 3), () => S.makeMailbox(i)), tx, ty, 0, tx + ty + 1, foot, false); break;
       case 'crate': add(cached('crate', () => S.makeCrate()), tx, ty, 0, tx + ty + 1, foot, false); block(tx, ty, tx + 1, ty + 1, false); casters.push({ x: tx + 0.12, y: ty + 0.12, lx: 0.76, ly: 0.76, h: 0.7 }); break;

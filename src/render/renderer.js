@@ -41,6 +41,21 @@ export function createRenderer(screen, world, sheets, pal) {
 
   const clouds = [0, 1, 2, 3, 4].map(i => ({ c: makeCloud(900 + i * 13), x: i * 97 % 300, y: 18 + (i * 53) % 150, v: 2 + (i % 3) }));
   const items = []; // reused render list
+  /** Survivors: in the line, waiting (help bubble), panicking (red !), or turning into a zombie. */
+  function drawPerson(ctx, p, x, y, time) {
+    const sheet = sheets.survivors[p.cls];
+    let frame = (p.state === 'stranded' || p.state === 'panic') ? 0 : Math.floor(p.anim * 4) % 4;
+    let img = sheet[p.face][frame], jx = 0;
+    if (p.state === 'turning') { img = Math.floor(p.t * 8) % 2 ? sheets.zombies[1].S[0] : sheet.flash.S[0]; jx = Math.round(Math.sin(time * 40)); }
+    else if (p.flash > 0) img = sheet.flash[p.face][frame];
+    if (p.state === 'panic') jx = Math.round(Math.sin(time * 50));
+    if (p.state === 'stranded') { img = sheet.S[Math.floor(time * 3 + p.bob) % 2 ? 1 : 3]; }
+    ctx.drawImage(img, x - 9 + jx, y - 16);
+    if (p.state === 'line' && p.muzzle > 0) { const off = { E: [7, -9], W: [-11, -9], S: [2, -6], N: [-2, -10] }[p.face]; ctx.drawImage(sheets.muzzle, x + off[0], y + off[1]); }
+    if (p.state === 'stranded') ctx.drawImage(sheets.help, x - 4, y - 28 + Math.round(Math.sin(p.bob) * 1.5));
+    if (p.state === 'panic' && Math.floor(time * 6) % 2) ctx.drawImage(sheets.panic, x - 4, y - 28);
+    if (p.tough > 0 && p.state === 'line') { ctx.fillStyle = '#1c1424'; ctx.fillRect(x + 3, y - 18, 5, 5); ctx.fillStyle = '#5aa9cf'; ctx.fillRect(x + 4, y - 17, 3, 3); }
+  }
   const item = (i) => items[i] || (items[i] = { key: 0, kind: 0, ref: null, x: 0, y: 0, alpha: 1 });
 
   return function render(g, alpha, input, fps) {
@@ -94,7 +109,27 @@ export function createRenderer(screen, world, sheets, pal) {
       if (x < -20 || x > W + 20 || y < -10 || y > H + 30) continue;
       const it = item(n++); it.key = zx + zy; it.kind = 1; it.ref = z; it.x = x; it.y = y;
     }
-    { const it = item(n++); it.key = leaderKey; it.kind = 2; it.ref = L; it.x = lsx; it.y = lsy; }
+    if (g.state !== 'title') { const it = item(n++); it.key = leaderKey; it.kind = 2; it.ref = L; it.x = lsx; it.y = lsy; }
+    const people = g.line.concat(g.others);
+    for (const p of people) {
+      const px = lerp(p.px, p.x, alpha), py = lerp(p.py, p.y, alpha), [x, y] = S(px, py);
+      if (x < -20 || x > W + 20 || y < -10 || y > H + 40) continue;
+      const it = item(n++); it.key = px + py; it.kind = 4; it.ref = p; it.x = x; it.y = y;
+    }
+    for (let i = 0; i < g.brains.count; i++) {
+      const b = g.brains.items[i], bx = lerp(b.px, b.x, alpha), by = lerp(b.py, b.y, alpha), [x, y] = S(bx, by);
+      if (x < -10 || x > W + 10 || y < -10 || y > H + 10) continue;
+      const it = item(n++); it.key = bx + by; it.kind = 5; it.ref = b; it.x = x; it.y = y;
+    }
+    for (const b of g.barrels) {
+      if (!b.alive) continue; const [x, y] = S(b.x, b.y);
+      if (x < -20 || x > W + 20 || y < -20 || y > H + 20) continue;
+      const it = item(n++); it.key = b.x + b.y; it.kind = 6; it.ref = b; it.x = x; it.y = y;
+    }
+    if (g.state === 'play' || g.state === 'paused' || g.state === 'levelup') for (let k = 0; k < g.up.saw; k++) {
+      const a = g.sawAngle + k * Math.PI * 2 / g.up.saw, sx = lx + Math.cos(a) * 1.15, sy = ly + Math.sin(a) * 1.15, [x, y] = S(sx, sy, 0.45);
+      const it = item(n++); it.key = sx + sy; it.kind = 7; it.ref = null; it.x = x; it.y = y;
+    }
     for (let i = 0; i < g.bullets.count; i++) {
       const b = g.bullets.items[i], bx = lerp(b.px, b.x, alpha), by = lerp(b.py, b.y, alpha);
       const it = item(n++); it.key = bx + by; it.kind = 3; it.ref = b; it.x = bx; it.y = by;
@@ -102,7 +137,8 @@ export function createRenderer(screen, world, sheets, pal) {
     // Shadows first, so nothing gets a shadow painted on top of it.
     for (let i = 0; i < n; i++) {
       const it = items[i];
-      if (it.kind === 1 || it.kind === 2) ctx.drawImage(sheets.shadow, it.x - 6, it.y - 2);
+      if (it.kind === 1 || it.kind === 2 || it.kind === 4) ctx.drawImage(sheets.shadow, it.x - 6, it.y - 2);
+      else if (it.kind === 6) ctx.drawImage(sheets.shadow, it.x - 5, it.y - 2);
     }
     const list = items.slice(0, n).sort((a, b) => a.key - b.key || a.kind - b.kind);
     let leaderHidden = false;
@@ -121,11 +157,31 @@ export function createRenderer(screen, world, sheets, pal) {
           const off = { E: [7, -9], W: [-11, -9], S: [2, -6], N: [-2, -10] }[L.face];
           ctx.drawImage(sheets.muzzle, it.x + off[0], it.y + off[1]);
         }
-      } else {
-        const b = it.ref, [hx, hy] = S(it.x, it.y, b.z), [tx, ty] = S(it.x - b.vx * 0.022, it.y - b.vy * 0.022, b.z);
+      } else if (it.kind === 3) {
+        const b = it.ref, [hx, hy] = S(it.x, it.y, b.z);
+        if (b.kind === 2) { ctx.drawImage(sheets.knife[Math.floor(b.spin) % 8], hx - 3, hy - 3); continue; }
+        if (b.kind === 1) { ctx.fillStyle = '#ffe680'; ctx.fillRect(hx, hy, 1, 1); continue; }
+        const [tx, ty] = S(it.x - b.vx * 0.022, it.y - b.vy * 0.022, b.z);
         ctx.fillStyle = '#ffb347'; ctx.fillRect(Math.round((hx + tx) / 2), Math.round((hy + ty) / 2), 1, 1); ctx.fillRect(tx, ty, 1, 1);
         ctx.fillStyle = '#fff6c8'; ctx.fillRect(hx, hy, 1, 1);
+      } else if (it.kind === 4) {
+        drawPerson(ctx, it.ref, it.x, it.y, g.time);
+      } else if (it.kind === 5) {
+        const b = it.ref, bob = Math.round(Math.sin(b.t * 5) * 1.2) - Math.round(b.z * 8);
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(g.time * 6 + b.t); ctx.drawImage(sheets.brainGlow, it.x - 6, it.y - 10 + bob); ctx.globalAlpha = 1;
+        ctx.drawImage(sheets.brain, it.x - 4, it.y - 7 + bob);
+      } else if (it.kind === 6) {
+        const spr = sheets.barrel; ctx.drawImage(spr.canvas, it.x - spr.ax + 0 - 0, it.y - spr.ay);
+        if (it.ref.flash > 0) { ctx.globalAlpha = 0.6; ctx.fillStyle = '#ffffff'; ctx.fillRect(it.x - 3, it.y - 9, 7, 8); ctx.globalAlpha = 1; }
+      } else if (it.kind === 7) {
+        ctx.drawImage(sheets.saw[Math.floor(g.time * 20) % 4], it.x - 5, it.y - 5);
       }
+    }
+    // Explosion flash: a dithered pixel disc.
+    if (E.flash) {
+      const [cx, cy] = S(E.flash.x, E.flash.y, 0.3), r = Math.round(10 + (0.12 - E.flash.t) * 120);
+      ctx.fillStyle = E.flash.t > 0.06 ? '#ffffff' : '#ffe680';
+      for (let yy = -r; yy <= r; yy++) for (let xx = -r * 2; xx <= r * 2; xx++) if ((xx / 2) ** 2 + yy * yy <= r * r && (E.flash.t > 0.07 || (xx + yy) % 2 === 0)) ctx.fillRect(cx + xx, cy + yy, 1, 1);
     }
     // Hidden behind something tall: draw the leader again as a faint "x-ray" on top.
     if (leaderHidden) { ctx.globalAlpha = 0.6; ctx.drawImage(sheets.leaderGhost[L.face][L.moving ? Math.floor(L.anim * FRAME_RATE) % 4 : 0], lsx - 9, lsy - 16); ctx.globalAlpha = 1; }
