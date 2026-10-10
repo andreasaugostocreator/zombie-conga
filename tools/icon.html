@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- Renders the app icon from the game's own sprite code. Opened by tools/make-icons.mjs. -->
+<html><body style="margin:0;background:#000">
+<canvas id="c" width="64" height="64"></canvas>
+<script type="module">
+import * as S from '../src/render/sprites.js';
+import { SUBURBS } from '../src/render/palette.js';
+import { boxSprite } from '../src/render/iso.js';
+const x = document.getElementById('c').getContext('2d'); x.imageSmoothingEnabled = false;
+// Night-purple sky with a big moon.
+const g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, '#2b1f45'); g.addColorStop(1, '#4a2f5e'); x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+x.fillStyle = '#f6eebd'; x.beginPath(); x.arc(47, 15, 9, 0, 7); x.fill(); x.fillStyle = '#e4d99a'; x.fillRect(43, 13, 2, 2); x.fillRect(49, 18, 3, 2);
+// A little grass island.
+const isl = boxSprite([{ x: 0, y: 0, z: -0.8, lx: 3, ly: 3, h: 0.8, shade: (f, wx, wy, z) => f === 'top' ? ((Math.floor(wx * 3) + Math.floor(wy * 3)) % 2 ? '#5f9e45' : '#6caa4c') : f === 'left' ? (z > -0.15 ? '#4f8a3c' : '#8a6a4a') : (z > -0.15 ? '#3f7533' : '#6b4f36') }]);
+x.drawImage(isl.canvas, 32 - isl.ax, 34 - isl.ay);
+// Conga line: zombie, then the cop leading, scaled 2x from the real sprites.
+const cop = S.makeCharacter(S.copLook()), z1 = S.makeCharacter(S.zombieLook(0)), z2 = S.makeCharacter(S.zombieLook(2));
+const draw = (c, px, py) => x.drawImage(c, px, py, 36, 36);
+x.globalAlpha = 0.35; x.fillStyle = '#1c1424'; x.beginPath(); x.ellipse(32, 52, 14, 4, 0, 0, 7); x.fill(); x.globalAlpha = 1;
+draw(z2.E[1], -2, 16); draw(z1.W[3], 32, 18); draw(cop.S[1], 14, 21);
+window.done = true;
+</script></body></html>

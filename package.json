@@ -1,0 +1,8 @@
+{
+  "name": "zombie-conga",
+  "private": true,
+  "description": "Dev tools only (screenshots). The game itself needs no build step.",
+  "type": "module",
+  "scripts": { "serve": "python3 -m http.server 8080", "shots": "node tools/shoot.mjs" },
+  "devDependencies": { "playwright-core": "1.48.2" }
+}
