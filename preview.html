@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- Debug level preview: preview.html?debug&region=0&seed=1 renders a whole generated map (or every level). -->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zombie Conga · level preview</title>
+<style>body{margin:0;background:#1c1424;color:#efe6d6;font:12px monospace}canvas{image-rendering:pixelated;display:block}.row{display:flex;flex-wrap:wrap;gap:8px;padding:8px}.card{background:#2b2240;padding:6px}</style>
+</head><body><div id="out" class="row"></div>
+<script type="module">
+import { generateMap } from './src/world/gen.js';
+import { buildWorld } from './src/world/map.js';
+import { REGIONS } from './src/render/palette.js';
+import { toScreen } from './src/render/iso.js';
+const q = new URLSearchParams(location.search);
+if (!q.has('debug')) { document.body.textContent = 'Add ?debug to the URL to use the level preview.'; throw new Error('debug only'); }
+const scale = +(q.get('scale') || 1);
+const regions = q.has('region') ? [+q.get('region')] : REGIONS.map((_, i) => i);
+for (const ri of regions) {
+  const def = generateMap(ri, +(q.get('seed') || 1), +(q.get('size') || 48));
+  const world = buildWorld(def, REGIONS[ri]);
+  const gr = world.groundSprite, c = document.createElement('canvas');
+  c.width = gr.canvas.width; c.height = gr.canvas.height + 80;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  x.fillStyle = REGIONS[ri].sky[1]; x.fillRect(0, 0, c.width, c.height);
+  const ox = gr.ax, oy = gr.ay + 80;
+  x.drawImage(gr.canvas, 0, 80);
+  for (const s of world.statics.slice().sort((a, b) => a.key - b.key)) { const [sx, sy] = toScreen(s.wx, s.wy, s.wz); x.drawImage(s.sprite.canvas, Math.round(ox + sx - s.sprite.ax), Math.round(oy + sy - s.sprite.ay)); }
+  for (const [label, p, col] of [['S', def.spawn, '#9bd068'], ['T', def.tower, '#e2384a'], ['E', def.extract, '#f4d35e']]) { if (!p) continue; const [sx, sy] = toScreen(p[0], p[1]); x.fillStyle = col; x.fillRect(ox + sx - 2, oy + sy - 2, 5, 5); }
+  c.style.width = c.width * scale + 'px';
+  const card = document.createElement('div'); card.className = 'card'; card.append(REGIONS[ri].name + `  ${def.buildings.length} buildings, ${def.objects.length} objects`, c);
+  document.getElementById('out').append(card);
+}
+window.done = true;
+</script></body></html>

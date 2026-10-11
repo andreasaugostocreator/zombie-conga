@@ -8,14 +8,19 @@ export function createScreen(canvas) {
   const probe = document.createElement('div');
   probe.style.cssText = 'position:fixed;inset:0;pointer-events:none;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
   document.body.appendChild(probe);
+  // A probe as tall as the *largest* viewport (lvh), for iOS home-screen apps that under-report height.
+  const tall = document.createElement('div');
+  tall.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:100vh;height:100lvh;pointer-events:none;visibility:hidden';
+  document.body.appendChild(tall);
   function resize() {
     const dpr = window.devicePixelRatio || 1;
     // Home-screen apps on iOS can report a viewport shorter than the screen (leaving a black bar):
     // use the full screen size when running standalone in portrait.
     const standalone = navigator.standalone || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
     const portrait = window.innerHeight >= window.innerWidth;
-    const vw = standalone ? Math.max(window.innerWidth, portrait ? screenInfo.width : screenInfo.height) : window.innerWidth;
-    const vh = standalone ? Math.max(window.innerHeight, portrait ? screenInfo.height : screenInfo.width) : window.innerHeight;
+    const vw = Math.max(window.innerWidth, standalone ? (portrait ? screenInfo.width : screenInfo.height) : 0);
+    const vh = Math.max(window.innerHeight, document.documentElement.clientHeight, tall.offsetHeight, window.visualViewport ? window.visualViewport.height : 0,
+      standalone ? (portrait ? screenInfo.height : screenInfo.width) : 0);
     const pw = Math.round(vw * dpr), ph = Math.round(vh * dpr);
     // Largest whole-number scale that keeps the internal width near the 216 px target.
     const scale = Math.max(1, Math.round(pw / BASE_W));

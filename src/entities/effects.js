@@ -55,6 +55,11 @@ export class Effects {
     this.scorch(x, y);
     this.flash = { x, y, t: 0.12 };
   }
+  ring(x, y) { for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; this.part(x, y, 0.8, Math.cos(a) * 3, Math.sin(a) * 3, 0, 0.35, '#e9e3d6', 4); } }
+  flare(x, y) {
+    if (Math.random() < 0.5) this.part(x + (Math.random() - 0.5) * 0.2, y + (Math.random() - 0.5) * 0.2, 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 1.4, 1.6, Math.random() < 0.5 ? '#ff6a6a' : '#ffb3b3', 3, 2);
+    if (Math.random() < 0.3) this.part(x, y, 0.2, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 2, 0.4, '#ffe680', 4);
+  }
   spark(x, y, z) { for (let i = 0; i < 4; i++) this.part(x, y, z, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, Math.random() * 2, 0.25, '#ffe680', 4); }
   number(x, y, val, color = '#ffffff') { const n = this.numbers.spawn(); if (n) Object.assign(n, { x, y, z: 1.6, val, life: 0.7, color }); }
   corpse(x, y, sprite, flip) { const c = this.corpses.spawn(); if (c) Object.assign(c, { x, y, sprite, life: 14, flip }); }

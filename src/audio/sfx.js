@@ -6,6 +6,7 @@
 let ac = null, out = null, verb = null, noiseBuf = null;
 export const audio = { enabled: true, vibration: true };
 
+import { music } from './music.js';
 export function unlock() {
   if (!ac) {
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -16,6 +17,7 @@ export function unlock() {
     const len = Math.floor(ac.sampleRate * 0.7), ir = ac.createBuffer(2, len, ac.sampleRate);
     for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
     verb = ac.createConvolver(); verb.buffer = ir; const vg = ac.createGain(); vg.gain.value = 0.35; verb.connect(vg).connect(out);
+    music.attach(ac, comp);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
@@ -106,6 +108,16 @@ export const sfx = {
   fire() { if (!ok()) return; noise(0.4, 0.3, { type: 'lowpass', f0: 600, f1: 2000, wet: 0.3 }); tone('triangle', 1800, 1700, 0.05, 0.05); },
   heal() { if (!ok()) return; [0, 4, 7].forEach((k, i) => tone('sine', note(k + 10), note(k + 10), 0.25, 0.08, { delay: i * 0.08, wet: 0.5 })); },
   click() { if (!ok()) return; tone('square', 1200, 900, 0.03, 0.06); },
+  spit() { if (!ok()) return; noise(0.12, 0.2, { type: 'bandpass', f0: 600, f1: 1800, q: 4 }); },
+  splat() { if (!ok()) return; noise(0.15, 0.25, { type: 'lowpass', f0: 900, f1: 200 }); tone('sine', 220, 90, 0.1, 0.15); },
+  scream() { if (!ok()) return; tone('sawtooth', 900, 1300, 0.5, 0.12, { wet: 0.5 }); tone('square', 1400, 1100, 0.45, 0.05, { delay: 0.05 }); },
+  jingle() { if (!ok()) return; [12, 14, 12, 9].forEach((k, i) => tone('triangle', note(k), note(k), 0.12, 0.08, { delay: i * 0.09, wet: 0.5 })); noise(0.3, 0.05, { type: 'highpass', f0: 6000 }); },
+  rev() { if (!ok()) return; tone('sawtooth', 60, 140, 0.8, 0.18); noise(0.8, 0.15, { type: 'lowpass', f0: 300, f1: 900 }); },
+  siren() { if (!ok()) return; for (let i = 0; i < 3; i++) tone('square', 700, 1100, 0.25, 0.05, { delay: i * 0.28 }); },
+  chopper() { if (!ok()) return; for (let i = 0; i < 14; i++) noise(0.05, 0.25, { type: 'lowpass', f0: 400, delay: i * 0.09 }); },
+  coin() { if (!ok()) return; tone('square', 988, 988, 0.05, 0.06); tone('square', 1319, 1319, 0.12, 0.06, { delay: 0.05 }); },
+  bossIntro() { if (!ok()) return; tone('sawtooth', 55, 40, 1.4, 0.3, { wet: 0.6 }); tone('square', 110, 80, 1.2, 0.1, { wet: 0.5 }); noise(1, 0.2, { type: 'lowpass', f0: 300, wet: 0.5 }); },
+  win() { if (!ok()) return; [0, 4, 7, 12, 16].forEach((k, i) => tone('square', note(k + 5), note(k + 5), 0.16, 0.08, { delay: i * 0.1, wet: 0.4 })); tone('triangle', note(19), note(19), 0.8, 0.12, { delay: 0.5, wet: 0.6 }); },
   step() { if (!ok()) return; noise(0.025, 0.035, { type: 'lowpass', f0: 900 }); },
   die() { if (!ok()) return; tone('sawtooth', 300, 40, 0.9, 0.18, { wet: 0.5 }); noise(0.5, 0.3, { type: 'lowpass', f0: 800, f1: 100, wet: 0.5 }); },
 };

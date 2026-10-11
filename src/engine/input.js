@@ -3,6 +3,8 @@
  * Touches that land on a UI button go to the UI instead. A second finger (or Space) asks for a dash.
  * Keyboard: WASD / arrows move, Space dashes, Escape / P pauses. `move` is screen-space, length 0..1.
  */
+import { haptics } from './haptics.js';
+
 export function createInput(screen, ui) {
   const input = { move: { x: 0, y: 0 }, stick: null, keys: new Set(), dash: false, pause: false, joystickEnabled: true };
   // About 60 CSS px across the rim, whatever the pixel scale.
@@ -10,8 +12,11 @@ export function createInput(screen, ui) {
   let pointerId = null;
   const toInternal = e => screen.cssToInternal(e.clientX, e.clientY);
   const el = screen.canvas;
+  // Haptic ticks can only play inside touch handlers on iOS: flush them on every touch event.
+  for (const t of ['touchstart', 'touchmove', 'touchend']) el.addEventListener(t, () => haptics.fromInput(), { passive: true });
   el.addEventListener('pointerdown', e => {
     e.preventDefault();
+    input.pointerDown = true;
     const [x, y] = toInternal(e);
     if (ui.hit(x, y)) { ui.tap(x, y); return; }
     if (!input.joystickEnabled) { ui.tap(x, y); return; }
@@ -31,7 +36,7 @@ export function createInput(screen, ui) {
     if (d > R * 1.6) { const k = (d - R * 1.6) / d; s.ox += dx * k; s.oy += dy * k; }
     s.x = x; s.y = y;
   }, { passive: false });
-  const end = e => { if (e.pointerId !== pointerId) return; pointerId = null; input.stick = null; };
+  const end = e => { input.pointerDown = false; if (e.pointerId !== pointerId) return; pointerId = null; input.stick = null; };
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
   addEventListener('keydown', e => {

@@ -32,6 +32,30 @@ export function bakeGround(map, pal, shadowMask) {
       case 'l': c = (Math.floor((wx + wy) * 1.5) % 2 === 0) ? pal.lawn[0] : pal.lawn[1]; if (n > 0.96) c = pal.tuft; break;
       case 'b': c = n < 0.55 ? pal.dirt[1] : n < 0.7 ? pal.dirt[0] : pal.flower[Math.floor(n2 * 3)]; break;
       case 'o': c = n < 0.3 ? pal.dirt[1] : n > 0.92 ? pal.stone : pal.dirt[0]; break;
+      case 'w': {
+        // Water: wavy highlights, foam where it meets land.
+        const isW = (x, y) => (map.ground[y]?.[x] ?? 'w') === 'w';
+        const edge = (fx < 0.14 && !isW(tx - 1, ty)) || (fx > 0.86 && !isW(tx + 1, ty)) || (fy < 0.14 && !isW(tx, ty - 1)) || (fy > 0.86 && !isW(tx, ty + 1));
+        if (edge) { c = n < 0.6 ? pal.foam : pal.water[2]; break; }
+        const wave = frac(wx * 1.3 + wy * 0.6 + Math.sin(wy * 2.1) * 0.3);
+        c = wave < 0.08 ? pal.water[2] : n < 0.2 ? pal.water[1] : pal.water[0];
+        break;
+      }
+      case 'p': c = frac(wy * 4) < 0.1 ? pal.plank[2] : (hash2(Math.floor(wx * 1.5), Math.floor(wy * 4), 21) < 0.5 ? pal.plank[0] : pal.plank[1]); if (frac(wx * 1.5) < 0.04) c = pal.plank[2]; break;
+      case 'f': c = ((tx + ty) % 2 ? pal.floor[1] : pal.floor[0]); if (fx < 0.04 || fy < 0.04) c = shadeHex(pal.floor[1], -0.08); else if (Math.abs(fx - fy) < 0.05 && fx > 0.2 && fx < 0.5) c = shadeHex(c, 0.08); break;
+      case 't': c = (fx < 0.06 || fy < 0.06 || Math.abs(fx - 0.5) < 0.03 || Math.abs(fy - 0.5) < 0.03) ? pal.grout : (hash2(tx * 2 + (fx > 0.5), ty * 2 + (fy > 0.5), 4) < 0.15 ? pal.tile[1] : pal.tile[0]); break;
+      case 's': c = n < 0.3 ? pal.sand[1] : n > 0.9 ? pal.sand[2] : pal.sand[0]; if (n2 > 0.97) c = pal.stone; break;
+      case 'c': c = (frac(wx / 2) < 0.03 || frac(wy / 2) < 0.03) ? shadeHex(pal.concrete[1], -0.1) : (n < 0.25 ? pal.concrete[1] : pal.concrete[0]); break;
+      case 'R': {
+        c = n < 0.2 ? pal.runway[1] : pal.runway[0];
+        for (const rd of map.roads) if (rd.kind === 'runway') {
+          const along = rd.axis === 'x' ? wx : wy, across = rd.axis === 'x' ? wy : wx;
+          if (Math.abs(across - rd.center) < 0.1 && frac(along * 0.25) < 0.5) c = pal.runLine;
+          if (Math.abs(Math.abs(across - rd.center) - (rd.half - 0.35)) < 0.08) c = pal.runLine;
+          if (Math.abs(across - rd.center) < rd.half - 0.6 && frac(along / 12) < 0.04 && frac(across * 2) < 0.5) c = pal.runLine;   // threshold bars
+        }
+        break;
+      }
       default: {
         c = n < 0.22 ? pal.grass[1] : n < 0.3 ? pal.grass[2] : n > 0.93 ? pal.grass[3] : pal.grass[0];
         if (n2 > 0.97) c = pal.flower[Math.floor(hash2(tx, ty, 5) * 3)];
