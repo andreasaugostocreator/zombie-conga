@@ -131,6 +131,7 @@ document.addEventListener('visibilitychange', () => {
   if (hidden && game.state === 'play' && scene === 'game') { game.state = 'paused'; input.release(); }
 });
 function frame(now) {
+  requestAnimationFrame(frame); // first, so one bad frame can never freeze the game
   const dt = Math.min(0.25, (now - last) / 1000); last = now; t += dt;
   const inGame = scene === 'game';
   input.joystickEnabled = inGame && game.state === 'play' && !overlay;
@@ -217,7 +218,6 @@ function frame(now) {
   }
   ui.end();
   frames++; if (now - fpsT > 500) { fps = Math.round(frames * 1000 / (now - fpsT)); frames = 0; fpsT = now; }
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 

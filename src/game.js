@@ -276,6 +276,7 @@ export function createGame(world, opts) {
   function end(won, reason) {
     if (g.state !== 'play') return;
     g.state = won ? 'won' : 'failed'; g.endAt = g.time;
+    g.banner = null;
     const stars = [];
     if (won && level) {
       stars.push(true);
@@ -290,7 +291,7 @@ export function createGame(world, opts) {
     if (won) { sfx.win(); feel.win(); } else { sfx.die(); feel.hurt(); shake(9); }
     g.onEnd && g.onEnd(g.result);
   }
-  g.end = end;
+  g.end = end; g.damageZombie = damageZombie;
 
   /* ---------------- update ---------------- */
   g.update = (dt, input) => {
