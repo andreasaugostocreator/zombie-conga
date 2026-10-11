@@ -3,7 +3,7 @@
  * Touches that land on a UI button go to the UI instead. A second finger (or Space) asks for a dash.
  * Keyboard: WASD / arrows move, Space dashes, Escape / P pauses. `move` is screen-space, length 0..1.
  */
-import { haptics } from './haptics.js';
+import { haptics, attachTapHaptics } from './haptics.js';
 
 export function createInput(screen, ui) {
   const input = { move: { x: 0, y: 0 }, stick: null, keys: new Set(), dash: false, pause: false, joystickEnabled: true };
@@ -12,12 +12,15 @@ export function createInput(screen, ui) {
   let pointerId = null;
   const toInternal = e => screen.cssToInternal(e.clientX, e.clientY);
   const el = screen.canvas;
+  attachTapHaptics(el);
   // Haptic ticks can only play inside touch handlers on iOS: flush them on every touch event.
   for (const t of ['touchstart', 'touchmove', 'touchend']) el.addEventListener(t, () => haptics.fromInput(), { passive: true });
   el.addEventListener('pointerdown', e => {
     e.preventDefault();
     input.pointerDown = true;
     const [x, y] = toInternal(e);
+    // Buttons (menus, cards, DASH, pause) and second-finger dashes tick; starting the joystick doesn't.
+    haptics.armTap(ui.hit(x, y) || pointerId !== null);
     if (ui.hit(x, y)) { ui.tap(x, y); return; }
     if (!input.joystickEnabled) { ui.tap(x, y); return; }
     if (pointerId !== null) { input.dash = true; return; }   // second finger: dash
