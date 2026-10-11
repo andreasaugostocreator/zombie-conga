@@ -35,7 +35,11 @@
     d.onclick = function () { location.reload(); };
     document.body.appendChild(d);
   }
-  addEventListener('error', function (e) { show((e.message || 'error') + (e.error && e.error.stack ? '\n' + e.error.stack.split('\n').slice(0, 4).join('\n') : '') + '\n' + (e.filename || '').split('/').pop() + ':' + e.lineno); });
+  addEventListener('error', function (e) {
+    // "Script error." with no file is a muted error from a script that isn't ours (Safari extensions, injected
+    // in-app browser code): the game loads nothing cross-origin, so it carries no info and the game keeps running.
+    if (!e.filename && !e.lineno && (!e.message || /^Script error\.?$/.test(e.message))) { console.warn('ignored foreign script error', e); return; }
+    show((e.message || 'error') + (e.error && e.error.stack ? '\n' + e.error.stack.split('\n').slice(0, 4).join('\n') : '') + '\n' + (e.filename || '').split('/').pop() + ':' + e.lineno); });
   addEventListener('unhandledrejection', function (e) { show('promise: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
 })();
 </script>
